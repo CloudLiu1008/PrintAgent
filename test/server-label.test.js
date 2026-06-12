@@ -59,3 +59,57 @@ test("print label endpoint renders template and sends html to printer service", 
     server.close()
   }
 })
+
+test("print label endpoint swaps vertical template size for fixed horizontal label paper", async () => {
+  let printed
+  const server = await createPrintServer({
+    config: {
+      port: 17690,
+      token: "test-token",
+      defaultPrinter: "TestPrinter",
+      defaultLabelWidthMm: 50,
+      defaultLabelHeightMm: 30,
+      allowedOrigins: []
+    },
+    logger: { info() {}, warn() {}, error() {} },
+    saveConfig: config => config,
+    printerService: {
+      getPrinters: async () => [],
+      printHtml: async request => {
+        printed = request
+      }
+    }
+  })
+
+  try {
+    const response = await fetch("http://127.0.0.1:17690/print/label", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-PrintAgent-Token": "test-token"
+      },
+      body: JSON.stringify({
+        template: {
+          templateName: "Vertical",
+          templateJson: JSON.stringify({
+            direction: "vertical",
+            widthMm: 30,
+            heightMm: 50,
+            elements: [{ type: "text", x: 1, y: 1, width: 20, height: 6, text: "kiwi" }]
+          })
+        },
+        rows: [{}],
+        printerName: "TestPrinter"
+      })
+    })
+    const data = await response.json()
+
+    assert.equal(response.status, 200)
+    assert.equal(data.success, true)
+    assert.equal(printed.widthMm, 50)
+    assert.equal(printed.heightMm, 30)
+    assert.match(printed.html, /rotate\(90deg\)/)
+  } finally {
+    server.close()
+  }
+})

@@ -1,17 +1,26 @@
 const bwipjs = require("bwip-js")
 const QRCode = require("qrcode")
 
-async function buildLabelDocument({ template, rows }) {
+async function buildLabelDocument({ template, rows, renderMode }) {
   const templateJson = parseTemplateJson(template)
   const widthMm = numberValue(templateJson.widthMm || template.widthMm, 50)
   const heightMm = numberValue(templateJson.heightMm || template.heightMm, 30)
+  const direction = normalizeDirection(templateJson.direction || template.direction, widthMm, heightMm)
+  const rotateForPrint = renderMode === "print" && direction === "vertical" && heightMm > widthMm
+  const pageWidthMm = rotateForPrint ? heightMm : widthMm
+  const pageHeightMm = rotateForPrint ? widthMm : heightMm
   const offsetXMm = numberValue(template.offsetXMm, 0)
   const offsetYMm = numberValue(template.offsetYMm, 0)
   const dataRows = Array.isArray(rows) && rows.length ? rows : [{}]
   const pages = []
 
   for (const row of dataRows) {
-    pages.push(`<section class="label-page">${await renderElements(templateJson.elements || [], row)}</section>`)
+    const content = await renderElements(templateJson.elements || [], row)
+    if (rotateForPrint) {
+      pages.push(`<section class="print-page"><section class="label-page">${content}</section></section>`)
+    } else {
+      pages.push(`<section class="label-page">${content}</section>`)
+    }
   }
 
   return `<!DOCTYPE html>
@@ -20,27 +29,36 @@ async function buildLabelDocument({ template, rows }) {
   <meta charset="UTF-8" />
   <title>${escapeHtml(template.templateName || "标签打印")}</title>
   <style>
-    @page { size: ${widthMm}mm ${heightMm}mm; margin: 0; }
+    @page { size: ${pageWidthMm}mm ${pageHeightMm}mm; margin: 0; }
     html, body {
       margin: 0;
       padding: 0;
-      width: ${widthMm}mm;
-      min-height: ${heightMm}mm;
+      width: ${pageWidthMm}mm;
+      min-height: ${pageHeightMm}mm;
       background: #fff;
       color: #000;
       font-family: Arial, "Microsoft YaHei", sans-serif;
     }
+    .print-page {
+      position: relative;
+      width: ${pageWidthMm}mm;
+      height: ${pageHeightMm}mm;
+      overflow: hidden;
+      page-break-after: always;
+      box-sizing: border-box;
+    }
+    .print-page:last-child { page-break-after: auto; }
     .label-page {
       position: relative;
       width: ${widthMm}mm;
       height: ${heightMm}mm;
       overflow: hidden;
-      page-break-after: always;
+      page-break-after: ${rotateForPrint ? "auto" : "always"};
       box-sizing: border-box;
-      transform: translate(${offsetXMm}mm, ${offsetYMm}mm);
+      transform: ${rotateForPrint ? `translateX(${heightMm}mm) rotate(90deg) translate(${offsetXMm}mm, ${offsetYMm}mm)` : `translate(${offsetXMm}mm, ${offsetYMm}mm)`};
       transform-origin: left top;
     }
-    .label-page:last-child { page-break-after: auto; }
+    ${rotateForPrint ? "" : ".label-page:last-child { page-break-after: auto; }"}
     .label-item {
       position: absolute;
       box-sizing: border-box;
@@ -61,6 +79,17 @@ async function buildLabelDocument({ template, rows }) {
 ${pages.join("\n")}
 </body>
 </html>`
+}
+
+function getLabelPrintPageSize({ template } = {}) {
+  const templateJson = parseTemplateJson(template || {})
+  const widthMm = numberValue(templateJson.widthMm || template?.widthMm, 50)
+  const heightMm = numberValue(templateJson.heightMm || template?.heightMm, 30)
+  const direction = normalizeDirection(templateJson.direction || template?.direction, widthMm, heightMm)
+  if (direction === "vertical" && heightMm > widthMm) {
+    return { widthMm: heightMm, heightMm: widthMm }
+  }
+  return { widthMm, heightMm }
 }
 
 async function renderElements(elements, data) {
@@ -159,6 +188,13 @@ function numberValue(value, fallback = 0) {
   return Number.isFinite(num) ? num : fallback
 }
 
+function normalizeDirection(value, widthMm, heightMm) {
+  const normalized = String(value || "").toLowerCase()
+  if (normalized === "vertical" || normalized === "portrait") return "vertical"
+  if (normalized === "horizontal" || normalized === "landscape") return "horizontal"
+  return Number(heightMm || 0) > Number(widthMm || 0) ? "vertical" : "horizontal"
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -174,5 +210,6 @@ function escapeAttribute(value) {
 
 module.exports = {
   buildLabelDocument,
+  getLabelPrintPageSize,
   replaceFields
 }

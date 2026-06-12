@@ -5,7 +5,7 @@ const { APP_NAME, VERSION } = require("./constants")
 const { normalizeConfig } = require("./config")
 const { createTaskId } = require("./task-id")
 const { generateTestLabelHtml, normalizePrintHtmlRequest } = require("./label-html")
-const { buildLabelDocument } = require("./label-renderer")
+const { buildLabelDocument, getLabelPrintPageSize } = require("./label-renderer")
 
 async function createPrintServer({ config, logger, printerService, saveConfig }) {
   const app = express()
@@ -86,9 +86,12 @@ async function createPrintServer({ config, logger, printerService, saveConfig })
 
   app.post("/print/label", async (req, res) => {
     try {
-      const html = await buildLabelDocument(req.body || {})
+      const body = req.body || {}
+      const html = await buildLabelDocument({ ...body, renderMode: "print" })
+      const pageSize = getLabelPrintPageSize(body)
       const request = normalizePrintHtmlRequest({
-        ...req.body,
+        ...body,
+        ...pageSize,
         html
       }, currentConfig)
       const taskId = createTaskId()

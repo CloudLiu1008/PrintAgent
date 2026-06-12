@@ -1,0 +1,101 @@
+{
+  "name": "erp-print-agent",
+  "version": "1.0.0",
+  "description": "ERP local print agent for Windows label printers",
+  "main": "src/main.js",
+  "author": "Xunji SCM",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron --disable-gpu --disable-gpu-compositing .",
+    "dev": "electron --disable-gpu --disable-gpu-compositing .",
+    "test": "node --test",
+    "pack": "node scripts/build.js --dir",
+    "pack:win": "node scripts/build.js --win --dir",
+    "pack:mac": "node scripts/build.js --mac --dir",
+    "dist": "node scripts/build.js",
+    "dist:win": "node scripts/build.js --win",
+    "dist:mac": "node scripts/build.js --mac"
+  },
+  "dependencies": {
+    "bwip-js": "^4.11.1",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
+    "rcedit": "^5.0.2"
+  },
+  "build": {
+    "appId": "com.xunji.printagent",
+    "productName": "ERP PrintAgent",
+    "electronDist": "node_modules/electron/dist",
+    "afterPack": "scripts/after-pack.js",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "ERP-PrintAgent-Setup-${version}-win-${arch}.${ext}",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ERP PrintAgent"
+    },
+    "mac": {
+      "icon": "build/icon.icns",
+      "category": "public.app-category.utilities",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "artifactName": "ERP-PrintAgent-${version}-mac-${arch}.${ext}",
+      "identity": null
+    },
+    "dmg": {
+      "artifactName": "ERP-PrintAgent-${version}-mac-${arch}.${ext}",
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
+  }
+}

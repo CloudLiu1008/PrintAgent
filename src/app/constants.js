@@ -1,0 +1,17 @@
+const APP_NAME = "ERP PrintAgent"
+const APP_DIR_NAME = "ERP-PrintAgent"
+const VERSION = "1.0.0"
+const DEFAULT_PORT = 17688
+const DEFAULT_TOKEN = "local-secret-token"
+const DEFAULT_LABEL_WIDTH_MM = 40
+const DEFAULT_LABEL_HEIGHT_MM = 30
+
+module.exports = {
+  APP_NAME,
+  APP_DIR_NAME,
+  VERSION,
+  DEFAULT_PORT,
+  DEFAULT_TOKEN,
+  DEFAULT_LABEL_WIDTH_MM,
+  DEFAULT_LABEL_HEIGHT_MM
+}

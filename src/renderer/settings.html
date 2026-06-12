@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>ERP PrintAgent Settings</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: Arial, "Microsoft YaHei", sans-serif;
+      color: #2c2418;
+      background: #fbf7ef;
+    }
+    h1 {
+      margin: 0 0 18px;
+      font-size: 20px;
+    }
+    label {
+      display: block;
+      margin: 14px 0 6px;
+      font-weight: 700;
+    }
+    select,
+    input {
+      width: 100%;
+      height: 36px;
+      box-sizing: border-box;
+      border: 1px solid #d8bd7a;
+      border-radius: 4px;
+      padding: 0 10px;
+      background: #fff;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 22px;
+    }
+    button {
+      height: 36px;
+      border: 1px solid #caa64d;
+      border-radius: 4px;
+      padding: 0 14px;
+      background: #caa64d;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: #fff;
+      color: #5d4a2e;
+    }
+    .message {
+      margin-top: 14px;
+      min-height: 20px;
+      color: #6d5b3b;
+    }
+  </style>
+</head>
+<body>
+  <h1>ERP PrintAgent 设置</h1>
+  <label>默认打印机</label>
+  <select id="printer"></select>
+
+  <div class="grid">
+    <div>
+      <label>默认宽度 mm</label>
+      <input id="width" type="number" min="10" step="1" />
+    </div>
+    <div>
+      <label>默认高度 mm</label>
+      <input id="height" type="number" min="10" step="1" />
+    </div>
+  </div>
+
+  <label>Token</label>
+  <input id="tokenText" type="text" readonly />
+
+  <div class="actions">
+    <button id="save">保存设置</button>
+    <button id="test" class="secondary">测试打印</button>
+    <button id="reload" class="secondary">刷新打印机</button>
+  </div>
+  <div id="message" class="message"></div>
+
+  <script>
+    const params = new URLSearchParams(location.search)
+    const token = params.get("token") || ""
+    const headers = { "Content-Type": "application/json", "X-PrintAgent-Token": token }
+    const message = document.getElementById("message")
+    const printer = document.getElementById("printer")
+    const width = document.getElementById("width")
+    const height = document.getElementById("height")
+    const tokenText = document.getElementById("tokenText")
+
+    async function api(path, options = {}) {
+      const res = await fetch(path, { ...options, headers: { ...headers, ...(options.headers || {}) } })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.message || "请求失败")
+      return data
+    }
+
+    async function load() {
+      try {
+        const configRes = await api("/config")
+        const printerRes = await api("/printers")
+        printer.innerHTML = ""
+        printerRes.printers.forEach(item => {
+          const option = document.createElement("option")
+          option.value = item.name
+          option.textContent = `${item.name}${item.isDefault ? "（系统默认）" : ""}`
+          printer.appendChild(option)
+        })
+        printer.value = configRes.config.defaultPrinter || ""
+        width.value = configRes.config.defaultLabelWidthMm || 40
+        height.value = configRes.config.defaultLabelHeightMm || 30
+        tokenText.value = token
+        message.textContent = "已加载"
+      } catch (error) {
+        message.textContent = error.message
+      }
+    }
+
+    document.getElementById("save").addEventListener("click", async () => {
+      try {
+        await api("/config", {
+          method: "POST",
+          body: JSON.stringify({
+            defaultPrinter: printer.value,
+            defaultLabelWidthMm: Number(width.value),
+            defaultLabelHeightMm: Number(height.value)
+          })
+        })
+        message.textContent = "已保存"
+      } catch (error) {
+        message.textContent = error.message
+      }
+    })
+
+    document.getElementById("test").addEventListener("click", async () => {
+      try {
+        await api("/print/test", {
+          method: "POST",
+          body: JSON.stringify({
+            printerName: printer.value,
+            widthMm: Number(width.value),
+            heightMm: Number(height.value)
+          })
+        })
+        message.textContent = "测试打印任务已发送"
+      } catch (error) {
+        message.textContent = error.message
+      }
+    })
+
+    document.getElementById("reload").addEventListener("click", load)
+    load()
+  </script>
+</body>
+</html>

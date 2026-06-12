@@ -1,5 +1,7 @@
 # ERP PrintAgent
 
+[中文文档](README.zh-CN.md)
+
 ERP PrintAgent is a Windows local printing agent for jewelry ERP label printing. It runs as an Electron tray app and exposes a localhost HTTP API for the ERP web app.
 
 ## Features
